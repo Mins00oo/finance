@@ -1,6 +1,7 @@
 import fs from "node:fs";
+import path from "node:path";
 import sax from "sax";
-import { getServerEnv } from "@/lib/env";
+import iconv from "iconv-lite";
 
 export type CorpRecord = {
   corp_code: string;
@@ -19,16 +20,29 @@ function normalize(v: string | undefined | null) {
 }
 
 async function loadFromXml(): Promise<CorpRecord[]> {
-  const env = getServerEnv();
-  const path = env.CORP_XML_PATH;
-  if (!path) {
+  const defaultPath = path.join(process.cwd(), "data", "corp.xml");
+  const xmlPath = process.env.CORP_XML_PATH
+    ? path.resolve(process.env.CORP_XML_PATH)
+    : defaultPath;
+
+  if (!fs.existsSync(xmlPath)) {
     throw new Error(
-      "CORP_XML_PATH is not set. Add it to .env.local pointing to corp.xml.",
+      [
+        "corp.xml not found.",
+        `Expected: ${defaultPath}`,
+        "Fix: copy corp.xml into ./data/corp.xml (recommended) or set CORP_XML_PATH.",
+      ].join(" "),
     );
   }
-  if (!fs.existsSync(path)) {
-    throw new Error(`corp.xml not found at CORP_XML_PATH: ${path}`);
-  }
+
+  // Try to detect encoding from XML header (e.g., encoding="EUC-KR")
+  const head = fs.readFileSync(xmlPath, { encoding: "ascii", flag: "r" }).slice(0, 200);
+  const encMatch = head.match(/encoding\\s*=\\s*['\\"]([^'\\"]+)['\\"]/i);
+  const declared = encMatch?.[1]?.trim().toLowerCase();
+  const encoding =
+    declared === "euc-kr" || declared === "ks_c_5601-1987" || declared === "cp949"
+      ? "cp949"
+      : "utf-8";
 
   const parser = sax.createStream(true, { trim: true });
   const list: CorpRecord[] = [];
@@ -68,7 +82,9 @@ async function loadFromXml(): Promise<CorpRecord[]> {
     parser.on("end", resolve);
   });
 
-  fs.createReadStream(path, { encoding: "utf-8" }).pipe(parser);
+  fs.createReadStream(xmlPath)
+    .pipe(iconv.decodeStream(encoding))
+    .pipe(parser);
   await done;
 
   // 이름 기준으로 정렬(한글/영문 섞여도 안정적 정렬)

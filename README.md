@@ -10,11 +10,12 @@
 
 - `OPENDART_API_KEY`: OpenDART 인증키
 - `GEMINI_API_KEY`: Gemini API 키
-- `CORP_XML_PATH`: 로컬 `corp.xml` 경로
+- (선택) `CORP_XML_PATH`: `corp.xml` 경로(기본은 `./data/corp.xml`)
 
-### 2) corp.xml 경로만 맞추기
+### 2) corp.xml 파일 두기
 
-`CORP_XML_PATH`가 실제 `corp.xml`이 있는 경로를 가리키면 됩니다.
+- **권장**: 프로젝트 루트에 `data/corp.xml`로 넣기
+- 또는 `CORP_XML_PATH`로 경로 지정
 
 ### 3) 개발 서버 실행
 
@@ -26,7 +27,7 @@ npm run dev
 
 ## 주요 엔드포인트
 
-- `GET /api/corps?query=삼성`: 회사명 검색( DB `corp` )
+- `GET /api/corps?query=삼성`: 회사명 검색( `corp.xml` 기반 )
 - `GET /api/opendart/single-account?corpCode=00126380&years=5`: OpenDART 주요계정(캐시 포함)
 - `POST /api/ai/analyze`: Gemini 요약(캐시 포함)
 
